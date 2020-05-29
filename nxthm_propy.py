@@ -11,12 +11,16 @@ from geopy import distance
 # This function requires a valid google maps API key, supplied in google_maps_api_key
 def get_googlemaps_latlng(address : str) -> list:
 
-    google_maps_api_key : str = 'API Key Here'
+    google_maps_api_key : str = 'Your API key here'
+    geocode_result : dict = {}
 
     return_lst : list = []
 
-    gmaps = googlemaps.Client(key=google_maps_api_key)
-    geocode_result = gmaps.geocode(address)
+    try:
+        gmaps = googlemaps.Client(key=google_maps_api_key)
+        geocode_result = gmaps.geocode(address)
+    except: # Probably an invalid API KEY supplied
+        geocode_result = {}
 
     if 0 == len(geocode_result):
         return_lst = []
@@ -41,13 +45,13 @@ def get_geo_distance(latlng1 : list, latlng2 : list) -> float:
 # Return is a list of all addresses within raidus_m metres of address_focus
 # Addresses should be in traditional format: 123 Main St, Toronto, Ontario, or any format
 # which can be resolved by the google maps API
-def address_in_radius(address_focus : str, address_list : list, radius_m : float = 0) -> dict:
+def address_in_radius(address_focus : str, address_list : list, radius_m : float = 0) -> list:
 
     return_addresses    : list = []
     focus_latlng        : list = []
     dist                : float
 
-    if len(address_focus) > 0 and len(address_list) > 0:
+    if len(address_focus) > 0 and len(address_list) > 0 and radius_m > 0:
 
         # Get focus address lat, lng
         focus_latlng = get_googlemaps_latlng(address_focus)
@@ -55,12 +59,12 @@ def address_in_radius(address_focus : str, address_list : list, radius_m : float
         if 2 == len(focus_latlng):
             for add in address_list:
                 dist = get_geo_distance(focus_latlng, get_googlemaps_latlng(add))
-                if dist <= radius_m:
+                if 0 < dist and dist <= radius_m:
                     return_addresses.append([add, dist])
-        else:
-            return_addresses = {}
-    else:
-        return_addresses = {}
+        else: # Invalid subject address latitude/longitude
+            return_addresses = []
+    else: # Invalid subject address and/or radius
+        return_addresses = []
 
     return return_addresses
 
@@ -71,13 +75,13 @@ property_file   : str = 'nxthm_prop.csv'
 test_address    : str = '108 Balfour Ave, Toronto, ON M4C 1T6, Canada'
 
 df : pd.DataFrame = pd.read_csv(property_file, sep=',')
-address_column : str = 'gFormatted'
+df_address_column : str = 'gFormatted'
 address_list : list = []
 
 if df is not None:
     print('{}:nxthm_propy:subject address:{}'.format(datetime.date.today(), test_address))
     print('{}:nxthm_propy:property count:{}'.format(datetime.date.today(), df.shape[0]))
-    address_list = df[address_column].to_list()
-    print(address_in_radius(test_address, address_list, radius_m=1000))
+    address_list = df[df_address_column].to_list()
+    print(address_in_radius(test_address, address_list, radius_m=1500))
 else:
     print('{}:nxthm_propy:failed to import file:{}'.format(datetime.datetime.today, property_file))
